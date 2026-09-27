@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  hygiene:
+    name: Required files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Required files exist
+        run: |
+          set -euo pipefail
+          missing=0
+          for f in README.md tollfree/verbal-optin-consent.png; do
+            if [ ! -f "$f" ]; then
+              echo "MISSING: $f"
+              missing=1
+            else
+              echo "OK: $f"
+            fi
+          done
+          # .cursor/environment.json is optional in the schema; assert when present on tip.
+          if git ls-files --error-unmatch .cursor/environment.json >/dev/null 2>&1; then
+            if [ ! -f .cursor/environment.json ]; then
+              echo "MISSING: .cursor/environment.json (tracked but absent from checkout)"
+              missing=1
+            else
+              echo "OK: .cursor/environment.json"
+            fi
+          else
+            echo "SKIP: .cursor/environment.json (not tracked)"
+          fi
+          exit "$missing"
+
+      - name: README mentions Pappas Holdings / toll-free opt-in
+        run: |
+          set -euo pipefail
+          grep -q 'Pappas Holdings' README.md
+          grep -qi 'toll-free' README.md
+          grep -qi 'opt-in' README.md
+          echo "OK: README mentions Pappas Holdings and toll-free opt-in"
